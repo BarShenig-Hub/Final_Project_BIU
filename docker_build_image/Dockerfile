@@ -20,4 +20,4 @@ RUN pip install -r requirements.txt
 
 ENTRYPOINT ["python" ]
 
-CMD ["view.py" ]
+CMD ["Web_Application.py" ]
