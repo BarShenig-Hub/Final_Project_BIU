@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import heapq
+import os
 
 app = Flask(__name__)
 
@@ -108,7 +109,9 @@ def remove_the_earliest_meeting():
     }), 200
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, port=port)
+
 
 
 
