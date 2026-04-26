@@ -46,3 +46,18 @@ module "vpc" {
     Environment = "dev"
   }
 }
+
+resource "aws_dynamodb_table" "rsvp_table" {
+  name         = "RSVP"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "phone"
+
+  attribute {
+    name = "phone"
+    type = "S" # S = String
+  }
+
+  tags = {
+    Description = "Create DynamoDB table RSVP"
+  }
+}
