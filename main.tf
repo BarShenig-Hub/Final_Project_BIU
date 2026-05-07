@@ -138,7 +138,7 @@ resource "aws_instance" "rsvp_web" {
               }
               const data = { name: fullName, phone: phone, guests: parseInt(guests), attending: attendance === "כן" };
               try {
-              const response = await fetch("https://ocar0ifgci.execute-api.us-east-1.amazonaws.com/rsvp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+              const response = await fetch("https://ph1cu2qpna.execute-api.us-east-1.amazonaws.com/RSVP", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
               if (response.ok) {
               messageBox.textContent = "💐 הטופס נשלח בהצלחה! תודה על האישור 💐";
               messageBox.style.color = "green";
