@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>אישור הגעה לחתונה 💍</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<h1>אישור הגעה לחתונה 💌</h1>
+
+<p class="subtitle">
+אנא מלאו את הפרטים שלכם כדי שנוכל להיערך בהתאם 🎉
+</p>
+
+<form id="rsvpForm">
+
+<label>שם מלא:</label>
+<input type="text" id="fullName" required>
+
+<label>טלפון:</label>
+<input type="tel" id="phone" required>
+
+<label>מספר אורחים נוספים:</label>
+<input type="number" id="guests" min="0" value="0">
+
+<label>האם תגיעו?</label>
+
+<select id="attendance" required>
+    <option value="">בחר</option>
+    <option value="כן">כן</option>
+    <option value="לא">לא</option>
+</select>
+
+<button type="submit">שלח RSVP</button>
+
+</form>
+
+<div id="message"></div>
+
+<script>
+document.getElementById("rsvpForm").addEventListener("submit", async function(e) {
+
+    e.preventDefault();
+
+    const data = {
+        name: document.getElementById("fullName").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        guests: parseInt(document.getElementById("guests").value),
+        attending: document.getElementById("attendance").value === "כן"
+    };
+
+    const response = await fetch("/submit", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    });
+
+    const messageBox = document.getElementById("message");
+
+    if (response.ok) {
+        messageBox.innerHTML = "💐 הטופס נשלח בהצלחה!";
+        messageBox.style.color = "green";
+    } else {
+        messageBox.innerHTML = "❌ שגיאה בשליחה";
+        messageBox.style.color = "red";
+    }
+});
+</script>
+
+</body>
+</html>
