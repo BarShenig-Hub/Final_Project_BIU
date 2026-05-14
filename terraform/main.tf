@@ -78,13 +78,14 @@ resource "aws_instance" "rsvp_web" {
   user_data = <<-EOF
           #!/bin/bash
 
-          yum update -y
-          yum install -y docker
+          sudo apt-get update -y
+          sudo apt-get install -y docker.io
 
           systemctl start docker
           systemctl enable docker
 # Change the image #
-          docker run -d -p 80:5000 your-image
+          sudo docker pull barshenig/rsvp-web-app:latest
+          sudo docker run -d -p 80:5000 --restart always barshenig/rsvp-web-app:latest
           EOF
 
   tags = {
