@@ -1,26 +1,57 @@
+import os
+import boto3
 from flask import Flask, render_template, request, jsonify
-import requests
+from botocore.exceptions import ClientError
 
 app = Flask(__name__)
 
-# Add a value with variables file
-### The URL is't temprary ###
-API_URL = "https://ph1cu2qpna.execute-api.us-east-1.amazonaws.com/RSVP"
+# --- Configuration via environment variables ---
+TABLE_NAME  = os.environ.get("DYNAMODB_TABLE", "RSVP")
+AWS_REGION  = os.environ.get("AWS_REGION", "us-east-1")
+
+# boto3 will automatically use the EC2 Instance Profile (IAM role)
+# when running on EC2, so no hardcoded credentials are needed.
+dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
+table    = dynamodb.Table(TABLE_NAME)
+
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
+
 @app.route("/submit", methods=["POST"])
 def submit():
-    data = request.json
+    data = request.get_json(silent=True)
 
-    response = requests.post(API_URL, json=data)
+    if not data:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
 
-    if response.status_code == 200:
-        return jsonify({"message": "Success"}), 200
+    name      = data.get("name")
+    phone     = data.get("phone")
+    guests    = data.get("guests")
+    attending = data.get("attending")
 
-    return jsonify({"error": "Failed"}), 500
+    
+    if not all([name, phone, guests is not None, attending is not None]):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    try:
+        table.put_item(
+            Item={
+                "phone":     str(phone),
+                "name":      str(name),
+                "guests":    int(guests),
+                "attending": bool(attending),
+            }
+        )
+        return jsonify({"message": "RSVP saved successfully"}), 200
+
+    except ClientError as e:
+        # Log the original error server-side; return a safe message to the client
+        app.logger.error("DynamoDB error: %s", e.response["Error"]["Message"])
+        return jsonify({"error": "Could not save RSVP. Please try again later."}), 500
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=False)
