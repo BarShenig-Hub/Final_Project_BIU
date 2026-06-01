@@ -6,13 +6,11 @@ from botocore.exceptions import ClientError
 app = Flask(__name__)
 
 # --- Configuration via environment variables ---
-TABLE_NAME  = os.environ.get("DYNAMODB_TABLE", "RSVP")
-AWS_REGION  = os.environ.get("AWS_REGION", "us-east-1")
+TABLE_NAME = os.environ.get("DYNAMODB_TABLE", "RSVP")
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
-# boto3 will automatically use the EC2 Instance Profile (IAM role)
-# when running on EC2, so no hardcoded credentials are needed.
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
-table    = dynamodb.Table(TABLE_NAME)
+table = dynamodb.Table(TABLE_NAME)
 
 
 @app.route("/")
@@ -27,28 +25,32 @@ def submit():
     if not data:
         return jsonify({"error": "Invalid or missing JSON body"}), 400
 
-    name      = data.get("name")
-    phone     = data.get("phone")
-    guests    = data.get("guests")
-    attending = data.get("attending")
+    name = data.get("name")
+    phone = data.get("phone")
+    guests = data.get("guests")
+    attendance = data.get("attendance")
+    meal = data.get("meal")
 
-    
-    if not all([name, phone, guests is not None, attending is not None]):
+    if not all([name, phone, guests, attendance]):
         return jsonify({"error": "Missing required fields"}), 400
+
+    attending = attendance == "yes"
 
     try:
         table.put_item(
             Item={
-                "phone":     str(phone),
-                "name":      str(name),
-                "guests":    int(guests),
-                "attending": bool(attending),
+                "phone": str(phone),
+                "name": str(name),
+                "guests": str(guests),
+                "attendance": str(attendance),
+                "attending": attending,
+                "meal": str(meal) if meal else "",
             }
         )
+
         return jsonify({"message": "RSVP saved successfully"}), 200
 
     except ClientError as e:
-        # Log the original error server-side; return a safe message to the client
         app.logger.error("DynamoDB error: %s", e.response["Error"]["Message"])
         return jsonify({"error": "Could not save RSVP. Please try again later."}), 500
 
