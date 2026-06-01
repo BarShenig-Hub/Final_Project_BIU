@@ -28,7 +28,7 @@ variable "dynamodb_table_name" {
 variable "docker_image" {
   description = "Docker image for the RSVP web application"
   type        = string
-  default     = "barshenig/web-app-rsvp:01"
+  default     = "shirbuchbut/rsvp-project:01"
 }
 
 # ─────────────────── VPC ───────────────────
