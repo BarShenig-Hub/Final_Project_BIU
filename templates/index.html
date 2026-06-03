@@ -260,7 +260,7 @@ input,select{
       <div class="small-title">SAVE THE DATE</div>
 
       <h1 class="names">
-        דניאל <span class="and">&</span> נועה
+        {{ couple.groom_name }} <span class="and">&</span> {{ couple.bride_name }}
       </h1>
 
       <p class="message">
@@ -272,20 +272,20 @@ input,select{
     <div class="event-details">
       <div class="detail">
         <div class="detail-title">תאריך</div>
-        <div class="detail-value">12.09.2026<br>יום חמישי</div>
+        <div class="detail-value">{{ couple.event_date }}<br>{{ couple.event_day }}</div>
       </div>
 
       <div class="detail">
         <div class="detail-title">לוח זמנים</div>
         <div class="detail-value">
-          קבלת פנים · 19:30<br>
-          חופה · 20:30
+          קבלת פנים · {{ couple.reception_time }}<br>
+          חופה · {{ couple.ceremony_time }}
         </div>
       </div>
 
       <div class="detail">
         <div class="detail-title">מיקום</div>
-        <div class="detail-value" id="venue-location">ADEO אבן יהודה</div>
+        <div class="detail-value" id="venue-location">{{ couple.venue_name }}</div>
       </div>
     </div>
 
@@ -364,10 +364,12 @@ input,select{
 </section>
 
 <div class="footer">
-  With love · Daniel & Noa
+  With love · {{ couple.groom_name }} & {{ couple.bride_name }}
 </div>
 
 <script>
+const coupleId = "{{ couple.couple_id }}";
+
 const venueLocation = document
   .getElementById("venue-location")
   .innerText
@@ -392,12 +394,11 @@ document.getElementById("rsvpForm").addEventListener("submit", async function(e)
     phone: form.phone.value,
     guests: Number(form.guests.value),
     attendance: form.attendance.value,
-    attending: form.attendance.value === "yes",
     meal: form.meal.value
   };
 
   try {
-    const response = await fetch("/submit", {
+    const response = await fetch(`/submit/${coupleId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
