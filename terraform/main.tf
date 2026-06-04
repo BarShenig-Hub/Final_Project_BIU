@@ -19,16 +19,22 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
-variable "dynamodb_table_name" {
-  description = "Name of the DynamoDB RSVP table"
+variable "couples_table_name" {
+  description = "Name of the DynamoDB couples table"
   type        = string
-  default     = "RSVP"
+  default     = "RSVP_Couples"
+}
+
+variable "rsvp_table_name" {
+  description = "Name of the DynamoDB RSVP responses table"
+  type        = string
+  default     = "RSVP_Responses"
 }
 
 variable "docker_image" {
   description = "Docker image for the RSVP web application"
   type        = string
-  default     = "barshenig/web-app-rsvp:01"
+  default     = "shirbuchbut/web-app-rsvp:admin-01"
 }
 
 # ─────────────────── VPC ───────────────────
@@ -38,8 +44,9 @@ module "vpc" {
 
   name = "myRSVP"
   cidr = "10.0.0.0/16"
-  azs             = ["${var.aws_region}a", "${var.aws_region}b"]
-  public_subnets  = ["10.0.1.0/24", "10.0.2.0/24"]
+
+  azs            = ["${var.aws_region}a", "${var.aws_region}b"]
+  public_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
 
   manage_default_security_group = true
 
@@ -56,7 +63,7 @@ module "vpc" {
       to_port     = 22
       protocol    = "tcp"
       description = "Allow SSH"
-      cidr_blocks = "0.0.0.0/0"  # Restrict to your IP in production
+      cidr_blocks = "0.0.0.0/0"
     }
   ]
 
@@ -75,10 +82,25 @@ module "vpc" {
   }
 }
 
-# ─────────────────── DynamoDB ───────────────────
+# ─────────────────── DynamoDB Tables ───────────────────
+
+resource "aws_dynamodb_table" "couples_table" {
+  name         = var.couples_table_name
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "couple_id"
+
+  attribute {
+    name = "couple_id"
+    type = "S"
+  }
+
+  tags = {
+    Description = "Stores RSVP couples and event details"
+  }
+}
 
 resource "aws_dynamodb_table" "rsvp_table" {
-  name         = var.dynamodb_table_name
+  name         = var.rsvp_table_name
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "phone"
 
@@ -88,11 +110,11 @@ resource "aws_dynamodb_table" "rsvp_table" {
   }
 
   tags = {
-    Description = "RSVP DynamoDB table"
+    Description = "Stores RSVP guest responses"
   }
 }
 
-# ─────────────────── IAM Role for EC2 (replaces Lambda role) ───────────────────
+# ─────────────────── IAM Role for EC2 ───────────────────
 
 resource "aws_iam_role" "ec2_rsvp_role" {
   name = "rsvp_ec2_role"
@@ -117,17 +139,22 @@ resource "aws_iam_role_policy" "ec2_dynamodb_policy" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "dynamodb:PutItem",
-        "dynamodb:GetItem",
-        "dynamodb:UpdateItem",
-        "dynamodb:Query",
-        "dynamodb:Scan"
-      ]
-      Resource = aws_dynamodb_table.rsvp_table.arn
-    }]
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = [
+          aws_dynamodb_table.couples_table.arn,
+          aws_dynamodb_table.rsvp_table.arn
+        ]
+      }
+    ]
   })
 }
 
@@ -144,10 +171,7 @@ resource "aws_instance" "rsvp_web" {
   subnet_id                   = module.vpc.public_subnets[0]
   vpc_security_group_ids      = [module.vpc.default_security_group_id]
   associate_public_ip_address = true
-
-  # Attach the IAM Instance Profile so the container inherits DynamoDB permissions
-  # without needing any hardcoded AWS credentials
-  iam_instance_profile = aws_iam_instance_profile.ec2_rsvp_profile.name
+  iam_instance_profile        = aws_iam_instance_profile.ec2_rsvp_profile.name
 
   user_data = <<-EOF
     #!/bin/bash
@@ -157,30 +181,68 @@ resource "aws_instance" "rsvp_web" {
     systemctl enable docker
 
     docker pull ${var.docker_image}
+
+    docker rm -f rsvp-admin-app || true
+
     docker run -d \
       -p 80:5000 \
-      -e DYNAMODB_TABLE=${var.dynamodb_table_name} \
+      -e COUPLES_TABLE=${var.couples_table_name} \
+      -e RSVP_TABLE=${var.rsvp_table_name} \
       -e AWS_REGION=${var.aws_region} \
       --restart always \
+      --name rsvp-admin-app \
       ${var.docker_image}
   EOF
 
   tags = {
-    Name = "RSVP-Web-Server"
+    Name = "RSVP-Admin-Web-Server"
   }
 
-  # Ensure the IAM profile exists before the instance launches
-  depends_on = [aws_iam_instance_profile.ec2_rsvp_profile]
+  depends_on = [
+    aws_iam_instance_profile.ec2_rsvp_profile,
+    aws_dynamodb_table.couples_table,
+    aws_dynamodb_table.rsvp_table
+  ]
+}
+
+# ─────────────────── Elastic IP ───────────────────
+
+resource "aws_eip" "rsvp_eip" {
+  domain = "vpc"
+
+  tags = {
+    Name = "RSVP-Elastic-IP"
+  }
+}
+
+resource "aws_eip_association" "rsvp_eip_assoc" {
+  instance_id   = aws_instance.rsvp_web.id
+  allocation_id = aws_eip.rsvp_eip.id
 }
 
 # ─────────────────── Outputs ───────────────────
 
-output "website_address" {
-  value       = "http://${aws_instance.rsvp_web.public_ip}"
-  description = "Public URL of the RSVP web application"
+output "admin_address" {
+  value       = "http://${aws_eip.rsvp_eip.public_ip}/admin"
+  description = "Public URL of the RSVP Admin page"
 }
 
-output "dynamodb_table_name" {
+output "website_base_address" {
+  value       = "http://${aws_eip.rsvp_eip.public_ip}"
+  description = "Base URL of the RSVP application"
+}
+
+output "elastic_ip" {
+  value       = aws_eip.rsvp_eip.public_ip
+  description = "Static Elastic IP attached to the EC2 instance"
+}
+
+output "couples_table_name" {
+  value       = aws_dynamodb_table.couples_table.name
+  description = "Name of the couples DynamoDB table"
+}
+
+output "rsvp_table_name" {
   value       = aws_dynamodb_table.rsvp_table.name
-  description = "Name of the DynamoDB table"
+  description = "Name of the RSVP responses DynamoDB table"
 }
