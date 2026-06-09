@@ -158,7 +158,6 @@ def couple_page(couple_id):
 
 
 @app.route("/submit/<couple_id>", methods=["POST"])
-@login_required
 def submit(couple_id):
     data = request.get_json(silent=True)
 
