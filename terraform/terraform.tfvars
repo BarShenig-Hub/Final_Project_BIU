@@ -1,0 +1,5 @@
+aws_region          = "us-east-1"
+couples_table_name  = "RSVP_Couples"
+rsvp_table_name     = "RSVP_Responses"
+docker_image        = "barshenig/web-app-rsvp:11"
+ngrok_custom_domain = "sharper-unending-frill.ngrok-free.dev"

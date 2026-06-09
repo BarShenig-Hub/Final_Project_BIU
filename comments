@@ -1,12 +1,3 @@
-# main.tf > line 87  docker run -d -p 80:5000 your-image
-
-
-# Add a value with variables file
-### The URL is't temprary ###
-app.py > line 8
-
-
-
 Go to AWS Console → Secrets Manager → Secrets
 Find rsvp/admin_credentials (created by Terraform)
 Click it → Retrieve secret value → Edit

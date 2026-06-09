@@ -11,39 +11,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-# ─────────────────── Variables ───────────────────
-
-variable "aws_region" {
-  description = "AWS region to deploy into"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "couples_table_name" {
-  description = "Name of the DynamoDB couples table"
-  type        = string
-  default     = "RSVP_Couples"
-}
-
-variable "rsvp_table_name" {
-  description = "Name of the DynamoDB RSVP responses table"
-  type        = string
-  default     = "RSVP_Responses"
-}
-
-variable "docker_image" {
-  description = "Docker image for the RSVP web application"
-  type        = string
-  default     = "barshenig/web-app-rsvp:11"
-}
-
-variable "ngrok_custom_domain" {
-  description = "Your static free ngrok domain"
-  type        = string
-  default     = "sharper-unending-frill.ngrok-free.dev"
-}
-
-
 # ─────────────────── VPC ───────────────────
 
 module "vpc" {
