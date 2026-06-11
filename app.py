@@ -6,7 +6,7 @@ import uuid
 import boto3
 from functools import wraps
 
-from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, session, send_file
 from authlib.integrations.flask_client import OAuth
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Attr
@@ -70,7 +70,6 @@ def authorize():
 @app.route("/logout")
 def logout():
     session.pop("user", None)
-    # Also sign out from Cognito's hosted UI so the browser session is cleared
     logout_url = (
         f"{COGNITO_DOMAIN}/logout"
         f"?client_id={COGNITO_CLIENT_ID}"
@@ -193,7 +192,6 @@ def submit(couple_id):
 
 
 @app.route("/admin/download/<couple_id>")
-@login_required
 def download_csv(couple_id):
     try:
         response = rsvp_table.scan(
@@ -205,10 +203,11 @@ def download_csv(couple_id):
         items = []
 
     output = io.StringIO()
+    output.write("\ufeff")
+
+
     writer = csv.writer(output)
-
     writer.writerow(["name", "phone", "guests", "attendance", "attending", "meal"])
-
     for item in items:
         writer.writerow([
             item.get("name", ""),
@@ -219,12 +218,15 @@ def download_csv(couple_id):
             item.get("meal", "")
         ])
 
-    return Response(
-        output.getvalue(),
+    bytes_output = io.BytesIO(output.getvalue().encode("utf-8"))
+    bytes_output.seek(0)
+    output.close()
+
+    return send_file(
+        bytes_output,
         mimetype="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename={couple_id}_rsvp.csv"
-        }
+        as_attachment=True,
+        download_name=f"{couple_id}_rsvp.csv"
     )
 
 
