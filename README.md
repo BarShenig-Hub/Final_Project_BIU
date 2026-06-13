@@ -71,133 +71,166 @@
 ## Policy: terraform-app-infrastructure-permissions
 ```json
 {
-	"Version": "2012-10-17",
-	"Statement": [
-		{
-			"Sid": "VPCModulePermissions",
-			"Effect": "Allow",
-			"Action": [
-				"ec2:CreateVpc",
-				"ec2:DeleteVpc",
-				"ec2:DescribeVpcs",
-				"ec2:ModifyVpcAttribute",
-				"ec2:CreateSubnet",
-				"ec2:DeleteSubnet",
-				"ec2:DescribeSubnets",
-				"ec2:ModifySubnetAttribute",
-				"ec2:CreateInternetGateway",
-				"ec2:DeleteInternetGateway",
-				"ec2:DescribeInternetGateways",
-				"ec2:AttachInternetGateway",
-				"ec2:DetachInternetGateway",
-				"ec2:CreateRouteTable",
-				"ec2:DeleteRouteTable",
-				"ec2:DescribeRouteTables",
-				"ec2:AssociateRouteTable",
-				"ec2:DisassociateRouteTable",
-				"ec2:CreateRoute",
-				"ec2:DeleteRoute",
-				"ec2:CreateSecurityGroup",
-				"ec2:DeleteSecurityGroup",
-				"ec2:DescribeSecurityGroups",
-				"ec2:AuthorizeSecurityGroupIngress",
-				"ec2:AuthorizeSecurityGroupEgress",
-				"ec2:RevokeSecurityGroupIngress",
-				"ec2:RevokeSecurityGroupEgress",
-				"ec2:CreateTags",
-				"ec2:DescribeVpcAttribute"
-			],
-			"Resource": "*"
-		},
-		{
-			"Sid": "SecretsManagerPermissions",
-			"Effect": "Allow",
-			"Action": [
-				"secretsmanager:GetSecretValue",
-				"secretsmanager:DescribeSecret",
-				"secretsmanager:CreateSecret",
-				"secretsmanager:DeleteSecret",
-				"secretsmanager:PutSecretValue",
-				"secretsmanager:GetResourcePolicy"
-			],
-			"Resource": "arn:aws:secretsmanager:*:*:secret:*"
-		},
-		{
-			"Sid": "DynamoDBTablesPermissions",
-			"Effect": "Allow",
-			"Action": [
-				"dynamodb:CreateTable",
-				"dynamodb:DeleteTable",
-				"dynamodb:DescribeTable",
-				"dynamodb:UpdateTable",
-				"dynamodb:TagResource"
-			],
-			"Resource": [
-				"arn:aws:dynamodb:*:*:table/RSVP_Couples",
-				"arn:aws:dynamodb:*:*:table/RSVP_Responses"
-			]
-		},
-		{
-			"Sid": "CognitoPermissions",
-			"Effect": "Allow",
-			"Action": [
-				"cognito-idp:CreateUserPool",
-				"cognito-idp:DeleteUserPool",
-				"cognito-idp:DescribeUserPool",
-				"cognito-idp:UpdateUserPool",
-				"cognito-idp:CreateUserPoolClient",
-				"cognito-idp:DeleteUserPoolClient",
-				"cognito-idp:DescribeUserPoolClient",
-				"cognito-idp:UpdateUserPoolClient",
-				"cognito-idp:CreateUserPoolDomain",
-				"cognito-idp:DeleteUserPoolDomain",
-				"cognito-idp:DescribeUserPoolDomain",
-				"cognito-idp:TagResource",
-				"cognito-idp:GetUserPoolMfaConfig"
-			],
-			"Resource": "arn:aws:cognito-idp:*:*:userpool/*"
-		},
-		{
-			"Sid": "IAMManagementForEC2",
-			"Effect": "Allow",
-			"Action": [
-				"iam:CreateRole",
-				"iam:DeleteRole",
-				"iam:GetRole",
-				"iam:UpdateRole",
-				"iam:PutRolePolicy",
-				"iam:DeleteRolePolicy",
-				"iam:GetRolePolicy",
-				"iam:CreateInstanceProfile",
-				"iam:DeleteInstanceProfile",
-				"iam:GetInstanceProfile",
-				"iam:AddRoleToInstanceProfile",
-				"iam:RemoveRoleFromInstanceProfile",
-				"iam:PassRole"
-			],
-			"Resource": [
-				"arn:aws:iam::*:role/ec2_rsvp_role",
-				"arn:aws:iam::*:instance-profile/rsvp_ec2_instance_profile"
-			]
-		},
-		{
-			"Sid": "EC2AndElasticIPPermissions",
-			"Effect": "Allow",
-			"Action": [
-				"ec2:RunInstances",
-				"ec2:TerminateInstances",
-				"ec2:DescribeInstances",
-				"ec2:AllocateAddress",
-				"ec2:ReleaseAddress",
-				"ec2:DescribeAddresses",
-				"ec2:AssociateAddress",
-				"ec2:DisassociateAddress",
-				"ec2:CreateTags",
-				"ec2:DescribeAddressesAttribute"
-			],
-			"Resource": "*"
-		}
-	]
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VPCModulePermissions",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateVpc",
+                "ec2:DeleteVpc",
+                "ec2:DescribeVpcs",
+                "ec2:ModifyVpcAttribute",
+                "ec2:CreateSubnet",
+                "ec2:DeleteSubnet",
+                "ec2:DescribeSubnets",
+                "ec2:ModifySubnetAttribute",
+                "ec2:CreateInternetGateway",
+                "ec2:DeleteInternetGateway",
+                "ec2:DescribeInternetGateways",
+                "ec2:AttachInternetGateway",
+                "ec2:DetachInternetGateway",
+                "ec2:CreateRouteTable",
+                "ec2:DeleteRouteTable",
+                "ec2:DescribeRouteTables",
+                "ec2:AssociateRouteTable",
+                "ec2:DisassociateRouteTable",
+                "ec2:CreateRoute",
+                "ec2:DeleteRoute",
+                "ec2:CreateSecurityGroup",
+                "ec2:DeleteSecurityGroup",
+                "ec2:DescribeSecurityGroups",
+                "ec2:AuthorizeSecurityGroupIngress",
+                "ec2:AuthorizeSecurityGroupEgress",
+                "ec2:RevokeSecurityGroupIngress",
+                "ec2:RevokeSecurityGroupEgress",
+                "ec2:CreateTags",
+                "ec2:DescribeVpcAttribute",
+                "ec2:DescribeSecurityGroupRules",
+                "ec2:DescribeNetworkAcls",
+                "ec2:DeleteNetworkAclEntry",
+                "ec2:CreateNetworkAclEntry",
+                "ec2:DeleteTags",
+                "ec2:DescribeNetworkInterfaces"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "SecretsManagerPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+                "secretsmanager:CreateSecret",
+                "secretsmanager:DeleteSecret",
+                "secretsmanager:PutSecretValue",
+                "secretsmanager:GetResourcePolicy"
+            ],
+            "Resource": "arn:aws:secretsmanager:*:*:secret:*"
+        },
+        {
+            "Sid": "DynamoDBTablesPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "dynamodb:CreateTable",
+                "dynamodb:DeleteTable",
+                "dynamodb:DescribeTable",
+                "dynamodb:UpdateTable",
+                "dynamodb:TagResource",
+                "dynamodb:DescribeContinuousBackups",
+                "dynamodb:DescribeTimeToLive",
+                "dynamodb:UpdateTimeToLive",
+                "dynamodb:ListTagsOfResource",
+                "dynamodb:UntagResource"
+            ],
+            "Resource": [
+                "arn:aws:dynamodb:*:*:table/RSVP_Couples",
+                "arn:aws:dynamodb:*:*:table/RSVP_Responses"
+            ]
+        },
+        {
+            "Sid": "CognitoPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "cognito-idp:CreateUserPool",
+                "cognito-idp:DeleteUserPool",
+                "cognito-idp:DescribeUserPool",
+                "cognito-idp:UpdateUserPool",
+                "cognito-idp:CreateUserPoolClient",
+                "cognito-idp:DeleteUserPoolClient",
+                "cognito-idp:DescribeUserPoolClient",
+                "cognito-idp:UpdateUserPoolClient",
+                "cognito-idp:CreateUserPoolDomain",
+                "cognito-idp:DeleteUserPoolDomain",
+                "cognito-idp:DescribeUserPoolDomain",
+                "cognito-idp:TagResource",
+                "cognito-idp:GetUserPoolMfaConfig",
+                "cognito-idp:UntagResource"
+            ],
+            "Resource": "arn:aws:cognito-idp:*:*:userpool/*"
+        },
+        {
+            "Sid": "CognitoDomainGlobalPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "cognito-idp:DescribeUserPoolDomain"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "IAMManagementForEC2",
+            "Effect": "Allow",
+            "Action": [
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:GetRole",
+                "iam:UpdateRole",
+                "iam:PutRolePolicy",
+                "iam:DeleteRolePolicy",
+                "iam:GetRolePolicy",
+                "iam:CreateInstanceProfile",
+                "iam:DeleteInstanceProfile",
+                "iam:GetInstanceProfile",
+                "iam:AddRoleToInstanceProfile",
+                "iam:RemoveRoleFromInstanceProfile",
+                "iam:PassRole",
+                "iam:TagRole",
+                "iam:ListRolePolicies",
+                "iam:ListAttachedRolePolicies",
+                "iam:UntagRole",
+                "iam:ListInstanceProfilesForRole",
+                "iam:DetachRolePolicy"
+            ],
+            "Resource": [
+                "arn:aws:iam::*:role/ec2_rsvp_role",
+                "arn:aws:iam::*:instance-profile/ec2_rsvp_profile"
+            ]
+        },
+        {
+            "Sid": "EC2AndElasticIPPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:RunInstances",
+                "ec2:TerminateInstances",
+                "ec2:DescribeInstances",
+                "ec2:AllocateAddress",
+                "ec2:ReleaseAddress",
+                "ec2:DescribeAddresses",
+                "ec2:AssociateAddress",
+                "ec2:DisassociateAddress",
+                "ec2:CreateTags",
+                "ec2:DescribeAddressesAttribute",
+                "ec2:DeleteTags",
+                "ec2:DescribeInstanceAttribute",
+                "ec2:ModifyInstanceAttribute",
+                "ec2:DescribeVolumes",
+                "ec2:DescribeInstanceTypes",
+                "ec2:DescribeTags",
+                "ec2:DescribeInstanceCreditSpecifications"
+            ],
+            "Resource": "*"
+        }
+    ]
 }
 
 ```
