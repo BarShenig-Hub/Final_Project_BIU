@@ -5,16 +5,12 @@
 
 ## Part 1: Repository Configuration
 
-### 1. Update AWS Account ID in GitHub Workflow
+### Update AWS Account ID in terraform-infra.yml
 
 * Find your 12-digit **Account ID** (top-right corner of AWS Console).
 * Update the `OIDC_ROLE_ARN` in `.github/workflows/terraform-infra.yml`:
 `arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/github-actions-terraform-role`
 
-### 2. Update Repository Identity in `main.tf`
-
-* Open `main.tf` and update the `sub` claim to match your specific GitHub user/repo:
-`"token.actions.githubusercontent.com:sub" : "repo:YOUR_GITHUB_USER/YOUR_REPO_NAME:*"`
 
 ---
 
