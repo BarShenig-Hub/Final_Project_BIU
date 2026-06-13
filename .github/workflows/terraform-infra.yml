@@ -101,11 +101,6 @@ jobs:
       # Runs on all actions to ensure code syntax is correct before proceeding
       run: terraform validate
 
-    - name: Terraform Import IAM Role (Safety Step)
-      if: ${{ github.event.inputs.tf_action == 'apply' }}
-      # Imports the role if it exists in AWS but not in state. The '|| true' ensures the workflow continues even if the import fails (e.g., already in state).
-      run: terraform import aws_iam_role.github_actions_role github-actions-terraform-role || true
-
     - name: Terraform Plan
       if: ${{ github.event.inputs.tf_action == 'apply' }}
       # Calculates the changes after the state is fully synced
@@ -118,23 +113,4 @@ jobs:
     - name: Terraform Destroy (Two-Stage Full Clean)
       if: ${{ github.event.inputs.tf_action == 'destroy' }}
       run: |
-        echo "=== STAGE 1: Destroying all application infrastructure ==="
-        terraform destroy \
-          -target=module.vpc \
-          -target=aws_instance.rsvp_web \
-          -target=aws_eip.rsvp_eip \
-          -target=aws_eip_association.rsvp_eip_assoc \
-          -target=aws_dynamodb_table.couples_table \
-          -target=aws_dynamodb_table.rsvp_table \
-          -target=aws_cognito_user_pool.rsvp_admins \
-          -target=aws_cognito_user_pool_domain.rsvp_domain \
-          -target=aws_cognito_user_pool_client.rsvp_app_client \
-          -target=random_id.suffix \
-          -target=aws_iam_role.ec2_rsvp_role \
-          -target=aws_iam_role_policy.ec2_dynamodb_policy \
-          -target=aws_iam_instance_profile.ec2_rsvp_profile \
-          -auto-approve
-
-        echo "=== STAGE 2: Destroying remaining pipeline infrastructure ==="
-        terraform state rm aws_iam_role.github_actions_role || true
         terraform destroy -auto-approve
