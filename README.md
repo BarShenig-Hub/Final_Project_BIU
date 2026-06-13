@@ -11,9 +11,8 @@
 2. Click **Identity providers** (left sidebar) → **Add provider**.
 3. Choose **OpenID Connect**.
 4. **Provider URL:** `https://token.actions.githubusercontent.com`
-5. Click **Get thumbprint** to verify.
-6. **Audience:** `sts.amazonaws.com`
-7. Click **Add provider**.
+5. **Audience:** `sts.amazonaws.com`
+6. Click **Add provider**.
 
 ### 2. Create GitHub Actions IAM Role (Manual Console Setup)
 
@@ -31,7 +30,7 @@
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
-        "StringLike": { "token.actions.githubusercontent.com:sub": "repo:YOUR_GITHUB_USER/YOUR_REPO_NAME:*" }
+        "StringLike": { "token.actions.githubusercontent.com:sub": "repo:BarShenig-Hub/Final_Project_BIU:ref:refs/heads/main" }
       }
     }
   ]

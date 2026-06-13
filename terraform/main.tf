@@ -46,8 +46,8 @@ resource "aws_iam_role" "github_actions_role" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           },
           StringLike = {
-            # REQUIRED: Update with your target GitHub organization/user and repository name
-            "token.actions.githubusercontent.com:sub" = "repo:YOUR_GITHUB_ORG_OR_USER/YOUR_REPO_NAME:*"
+            # REQUIRED: Update with your target GitHub user and repository name
+            "token.actions.githubusercontent.com:sub" = "repo:BarShenig-Hub/Final_Project_BIU:ref:refs/heads/bar-branch"
           }
         }
       }
