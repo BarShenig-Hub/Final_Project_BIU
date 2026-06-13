@@ -77,8 +77,8 @@ resource "aws_iam_role_policy" "ec2_dynamodb_policy" {
 }
 
 
-resource "aws_iam_instance_profile" "rsvp_ec2_instance_profile" {
-  name = "rsvp_ec2_instance_profile"
+resource "aws_iam_instance_profile" "ec2_rsvp_profile" {
+  name = "ec2_rsvp_profile"
   role = aws_iam_role.ec2_rsvp_role.name
 }
 
