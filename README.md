@@ -3,7 +3,7 @@
 
 # Infrastructure Deployment Guide
 
-## Part 1: Pre-Deployment Setup Checklist
+## Part 1: Pre-Deployment Setup Checklist in the AWS Console
 
 ### 1. Setup OIDC Identity Provider (AWS Console)
 
@@ -64,12 +64,12 @@
 
 ---
 
-## Part 2: For using this repo in your AWS Account and GitHub account
+## Part 2: Repository Configuration
 
 ### 1. Update AWS Account ID in GitHub Workflow
 
 * Find your 12-digit **Account ID** (top-right corner of AWS Console).
-* Update the `OIDC_ROLE_ARN` in `.github/workflows/terraform.yml`:
+* Update the `OIDC_ROLE_ARN` in `.github/workflows/terraform-infra.yml`:
 `arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/github-actions-terraform-role`
 
 ### 2. Update Repository Identity in `main.tf`
