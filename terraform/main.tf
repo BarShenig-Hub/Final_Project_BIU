@@ -20,10 +20,10 @@ terraform {
   }
 }
 
-# ─────────────────── IAM Role for EC2 ───────────────────
+# ─────────────────── IAM Roles ───────────────────
 
 resource "aws_iam_role" "ec2_rsvp_role" {
-  name = "rsvp_ec2_role"
+  name = "ec2_rsvp_role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
