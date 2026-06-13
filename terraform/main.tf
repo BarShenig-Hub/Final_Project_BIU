@@ -11,6 +11,250 @@ provider "aws" {
   region = var.aws_region
 }
 
+
+terraform {
+  backend "s3" {
+    # The bucket and dynamodb_table remain empty and will be injected from the Workflow.
+    key    = "rsvp-app/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+
+# ─────────────────── IAM Roles ───────────────────
+# ------------------------------------------------------
+# Fetch the current AWS Account ID automatically
+# ------------------------------------------------------
+data "aws_caller_identity" "current" {}
+
+# ------------------------------------------------------
+# IAM Role for GitHub Actions OIDC
+# ------------------------------------------------------
+resource "aws_iam_role" "github_actions_role" {
+  name = "github-actions-terraform-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
+        },
+        Action = "sts:AssumeRoleWithWebIdentity",
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          },
+          StringLike = {
+            # REQUIRED: Update with your target GitHub organization/user and repository name
+            "token.actions.githubusercontent.com:sub" = "repo:YOUR_GITHUB_ORG_OR_USER/YOUR_REPO_NAME:*"
+          }
+        }
+      }
+    ]
+  })
+}
+
+# ------------------------------------------------------
+# Dedicated IAM Policy for the Terraform Backend
+# ------------------------------------------------------
+resource "aws_iam_policy" "terraform_backend_policy" {
+  name        = "terraform-backend-permissions"
+  description = "Permissions for GitHub Actions to manage Terraform S3 State and DynamoDB Locks"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid    = "TerraformS3Backend",
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ],
+        Resource = [
+          "arn:aws:s3:::tfstate-*-bucket",
+          "arn:aws:s3:::tfstate-*-bucket/*"
+        ]
+      },
+      {
+        Sid    = "TerraformDynamoDBLocking",
+        Effect = "Allow",
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:DeleteItem"
+        ],
+        Resource = "arn:aws:dynamodb:*:${data.aws_caller_identity.current.account_id}:table/tflock-*-table"
+      }
+    ]
+  })
+}
+
+# ------------------------------------------------------
+# Specific IAM Policy for the application infrastructure resources
+# ------------------------------------------------------
+resource "aws_iam_policy" "app_infrastructure_policy" {
+  name        = "terraform-app-infrastructure-permissions"
+  description = "Strict permissions to create and destroy specific resources in main.tf"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid    = "VPCModulePermissions",
+        Effect = "Allow",
+        Action = [
+          "ec2:CreateVpc", "ec2:DeleteVpc", "ec2:DescribeVpcs", "ec2:ModifyVpcAttribute",
+          "ec2:CreateSubnet", "ec2:DeleteSubnet", "ec2:DescribeSubnets", "ec2:ModifySubnetAttribute",
+          "ec2:CreateInternetGateway", "ec2:DeleteInternetGateway", "ec2:DescribeInternetGateways", "ec2:AttachInternetGateway", "ec2:DetachInternetGateway",
+          "ec2:CreateRouteTable", "ec2:DeleteRouteTable", "ec2:DescribeRouteTables", "ec2:AssociateRouteTable", "ec2:DisassociateRouteTable", "ec2:CreateRoute", "ec2:DeleteRoute",
+          "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:DescribeSecurityGroups",
+          "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress"
+        ],
+        Resource = "*"
+      },
+      {
+        Sid    = "SecretsManagerPermissions",
+        Effect = "Allow",
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:CreateSecret",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:PutSecretValue"
+        ],
+        Resource = "arn:aws:secretsmanager:*:${data.aws_caller_identity.current.account_id}:secret:*"
+      },
+      {
+        Sid    = "DynamoDBTablesPermissions",
+        Effect = "Allow",
+        Action = [
+          "dynamodb:CreateTable",
+          "dynamodb:DeleteTable",
+          "dynamodb:DescribeTable",
+          "dynamodb:UpdateTable"
+        ],
+        Resource = [
+          "arn:aws:dynamodb:*:${data.aws_caller_identity.current.account_id}:table/couples_table",
+          "arn:aws:dynamodb:*:${data.aws_caller_identity.current.account_id}:table/rsvp_table"
+        ]
+      },
+      {
+        Sid    = "CognitoPermissions",
+        Effect = "Allow",
+        Action = [
+          "cognito-idp:CreateUserPool", "cognito-idp:DeleteUserPool", "cognito-idp:DescribeUserPool", "cognito-idp:UpdateUserPool",
+          "cognito-idp:CreateUserPoolClient", "cognito-idp:DeleteUserPoolClient", "cognito-idp:DescribeUserPoolClient", "cognito-idp:UpdateUserPoolClient",
+          "cognito-idp:CreateUserPoolDomain", "cognito-idp:DeleteUserPoolDomain", "cognito-idp:DescribeUserPoolDomain"
+        ],
+        Resource = "arn:aws:cognito-idp:*:${data.aws_caller_identity.current.account_id}:userpool/*"
+      },
+      {
+        Sid    = "IAMManagementForEC2",
+        Effect = "Allow",
+        Action = [
+          "iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:UpdateRole",
+          "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy",
+          "iam:CreateInstanceProfile", "iam:DeleteInstanceProfile", "iam:GetInstanceProfile",
+          "iam:AddRoleToInstanceProfile", "iam:RemoveRoleFromInstanceProfile"
+        ],
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/ec2_rsvp_role",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:instance-profile/ec2_rsvp_profile"
+        ]
+      },
+      {
+        Sid    = "EC2AndElasticIPPermissions",
+        Effect = "Allow",
+        Action = [
+          "ec2:RunInstances", "ec2:TerminateInstances", "ec2:DescribeInstances",
+          "ec2:AllocateAddress", "ec2:ReleaseAddress", "ec2:DescribeAddresses",
+          "ec2:AssociateAddress", "ec2:DisassociateAddress"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# ------------------------------------------------------
+# Attach the specific policies to the IAM Role
+# ------------------------------------------------------
+resource "aws_iam_role_policy_attachment" "attach_backend" {
+  role       = aws_iam_role.github_actions_role.name
+  policy_arn = aws_iam_policy.terraform_backend_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "attach_infra" {
+  role       = aws_iam_role.github_actions_role.name
+  policy_arn = aws_iam_policy.app_infrastructure_policy.arn
+}
+
+# ─────────────────── IAM Role for EC2 ───────────────────
+
+resource "aws_iam_role" "ec2_rsvp_role" {
+  name = "rsvp_ec2_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Name = "RSVP EC2 IAM Role"
+  }
+}
+
+resource "aws_iam_role_policy" "ec2_dynamodb_policy" {
+  name = "rsvp_ec2_dynamodb_policy"
+  role = aws_iam_role.ec2_rsvp_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [
+          aws_dynamodb_table.couples_table.arn,
+          aws_dynamodb_table.rsvp_table.arn,
+          data.aws_secretsmanager_secret.admin_credentials.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminSetUserPassword"
+        ]
+        Resource = [
+          aws_cognito_user_pool.rsvp_admins.arn
+        ]
+      }
+    ]
+  })
+}
+
+
+resource "aws_iam_instance_profile" "ec2_rsvp_profile" {
+  name = "rsvp_ec2_instance_profile"
+  role = aws_iam_role.ec2_rsvp_role.name
+}
+
 # ─────────────────── VPC ───────────────────
 
 module "vpc" {
@@ -163,67 +407,7 @@ output "cognito_domain" {
   value = "https://${aws_cognito_user_pool_domain.rsvp_domain.domain}.auth.${var.aws_region}.amazoncognito.com"
 }
 
-# ─────────────────── IAM Role for EC2 ───────────────────
 
-resource "aws_iam_role" "ec2_rsvp_role" {
-  name = "rsvp_ec2_role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-
-  tags = {
-    Name = "RSVP EC2 IAM Role"
-  }
-}
-
-resource "aws_iam_role_policy" "ec2_dynamodb_policy" {
-  name = "rsvp_ec2_dynamodb_policy"
-  role = aws_iam_role.ec2_rsvp_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:PutItem",
-          "dynamodb:GetItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:Query",
-          "dynamodb:Scan",
-          "secretsmanager:GetSecretValue"
-        ]
-        Resource = [
-          aws_dynamodb_table.couples_table.arn,
-          aws_dynamodb_table.rsvp_table.arn,
-          data.aws_secretsmanager_secret.admin_credentials.arn
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "cognito-idp:AdminCreateUser",
-          "cognito-idp:AdminSetUserPassword"
-        ]
-        Resource = [
-          aws_cognito_user_pool.rsvp_admins.arn
-        ]
-      }
-    ]
-  })
-}
-
-
-resource "aws_iam_instance_profile" "ec2_rsvp_profile" {
-  name = "rsvp_ec2_instance_profile"
-  role = aws_iam_role.ec2_rsvp_role.name
-}
 
 # ─────────────────── EC2 Instance ───────────────────
 
