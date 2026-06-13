@@ -11,6 +11,77 @@ provider "aws" {
   region = var.aws_region
 }
 
+
+terraform {
+  backend "s3" {
+    # The bucket and dynamodb_table remain empty and will be injected from the Workflow.
+    key    = "rsvp-app/terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+
+# ─────────────────── IAM Roles ───────────────────
+
+resource "aws_iam_role" "ec2_rsvp_role" {
+  name = "ec2_rsvp_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Name = "RSVP EC2 IAM Role"
+  }
+}
+
+resource "aws_iam_role_policy" "ec2_dynamodb_policy" {
+  name = "rsvp_ec2_dynamodb_policy"
+  role = aws_iam_role.ec2_rsvp_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [
+          aws_dynamodb_table.couples_table.arn,
+          aws_dynamodb_table.rsvp_table.arn,
+          data.aws_secretsmanager_secret.admin_credentials.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "cognito-idp:AdminCreateUser",
+          "cognito-idp:AdminSetUserPassword"
+        ]
+        Resource = [
+          aws_cognito_user_pool.rsvp_admins.arn
+        ]
+      }
+    ]
+  })
+}
+
+
+resource "aws_iam_instance_profile" "ec2_rsvp_profile" {
+  name = "ec2_rsvp_profile"
+  role = aws_iam_role.ec2_rsvp_role.name
+}
+
 # ─────────────────── VPC ───────────────────
 
 module "vpc" {
@@ -163,67 +234,7 @@ output "cognito_domain" {
   value = "https://${aws_cognito_user_pool_domain.rsvp_domain.domain}.auth.${var.aws_region}.amazoncognito.com"
 }
 
-# ─────────────────── IAM Role for EC2 ───────────────────
 
-resource "aws_iam_role" "ec2_rsvp_role" {
-  name = "rsvp_ec2_role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-
-  tags = {
-    Name = "RSVP EC2 IAM Role"
-  }
-}
-
-resource "aws_iam_role_policy" "ec2_dynamodb_policy" {
-  name = "rsvp_ec2_dynamodb_policy"
-  role = aws_iam_role.ec2_rsvp_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:PutItem",
-          "dynamodb:GetItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:Query",
-          "dynamodb:Scan",
-          "secretsmanager:GetSecretValue"
-        ]
-        Resource = [
-          aws_dynamodb_table.couples_table.arn,
-          aws_dynamodb_table.rsvp_table.arn,
-          data.aws_secretsmanager_secret.admin_credentials.arn
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "cognito-idp:AdminCreateUser",
-          "cognito-idp:AdminSetUserPassword"
-        ]
-        Resource = [
-          aws_cognito_user_pool.rsvp_admins.arn
-        ]
-      }
-    ]
-  })
-}
-
-
-resource "aws_iam_instance_profile" "ec2_rsvp_profile" {
-  name = "rsvp_ec2_instance_profile"
-  role = aws_iam_role.ec2_rsvp_role.name
-}
 
 # ─────────────────── EC2 Instance ───────────────────
 
