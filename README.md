@@ -176,7 +176,6 @@
 }
 
 ```
-**Important: Ensure that the resource "aws_iam_role" inside main.tf is updated with your specific AWS Account ID and GitHub Repository name before running your first deployment, otherwise the Terraform plan will fail to align with your manually created Role.**
 
 
 3. Click **Next**.
