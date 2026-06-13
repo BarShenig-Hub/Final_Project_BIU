@@ -53,9 +53,6 @@ resource "aws_iam_role" "github_actions_role" {
       }
     ]
   })
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # ------------------------------------------------------
@@ -93,9 +90,6 @@ resource "aws_iam_policy" "terraform_backend_policy" {
       }
     ]
   })
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # ------------------------------------------------------
@@ -184,9 +178,6 @@ resource "aws_iam_policy" "app_infrastructure_policy" {
       }
     ]
   })
-    lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # ------------------------------------------------------
@@ -195,17 +186,11 @@ resource "aws_iam_policy" "app_infrastructure_policy" {
 resource "aws_iam_role_policy_attachment" "attach_backend" {
   role       = aws_iam_role.github_actions_role.name
   policy_arn = aws_iam_policy.terraform_backend_policy.arn
-  lifecycle {
-  prevent_destroy = true
-}
 }
 
 resource "aws_iam_role_policy_attachment" "attach_infra" {
   role       = aws_iam_role.github_actions_role.name
   policy_arn = aws_iam_policy.app_infrastructure_policy.arn
-  lifecycle {
-  prevent_destroy = true
-}
 }
 
 # ─────────────────── IAM Role for EC2 ───────────────────
