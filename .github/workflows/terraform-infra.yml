@@ -19,6 +19,11 @@ permissions:
 jobs:
   terraform:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./terraform
+        
     env:
       # Generating a unique and random bucket name based on the Repo ID (Deterministic)
       BUCKET_NAME: "tfstate-${{ github.repository_id }}-bucket"
