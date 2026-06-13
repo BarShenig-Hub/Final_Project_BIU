@@ -136,4 +136,5 @@ jobs:
           -auto-approve
 
         echo "=== STAGE 2: Destroying remaining pipeline infrastructure ==="
+        terraform state rm aws_iam_role.github_actions_role || true
         terraform destroy -auto-approve
