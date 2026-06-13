@@ -3,7 +3,22 @@
 
 # Infrastructure Deployment Guide
 
-## Part 1: Pre-Deployment Setup Checklist in the AWS Console
+## Part 1: Repository Configuration
+
+### 1. Update AWS Account ID in GitHub Workflow
+
+* Find your 12-digit **Account ID** (top-right corner of AWS Console).
+* Update the `OIDC_ROLE_ARN` in `.github/workflows/terraform-infra.yml`:
+`arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/github-actions-terraform-role`
+
+### 2. Update Repository Identity in `main.tf`
+
+* Open `main.tf` and update the `sub` claim to match your specific GitHub user/repo:
+`"token.actions.githubusercontent.com:sub" : "repo:YOUR_GITHUB_USER/YOUR_REPO_NAME:*"`
+
+---
+
+## Part 2: Pre-Deployment Setup Checklist in the AWS Console
 
 ### 1. Setup OIDC Identity Provider (AWS Console)
 
@@ -14,7 +29,135 @@
 5. **Audience:** `sts.amazonaws.com`
 6. Click **Add provider**.
 
-### 2. Create GitHub Actions IAM Role (Manual Console Setup)
+
+### 2.1. Create Custom Managed Policies
+
+1. Log in to the AWS Management Console and navigate to **IAM** → **Policies** → **Create policy**. Click on the JSON tab for each policy, paste the code, and name them accordingly.
+
+## Policy: terraform-backend-permissions
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TerraformS3BackendAndBootstrap",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket",
+        "s3:CreateBucket",
+        "s3:PutBucketVersioning"
+      ],
+      "Resource": [
+        "arn:aws:s3:::tfstate-*-bucket",
+        "arn:aws:s3:::tfstate-*-bucket/*"
+      ]
+    },
+    {
+      "Sid": "TerraformDynamoDBLockingAndBootstrap",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:CreateTable",
+        "dynamodb:DescribeTable"
+      ],
+      "Resource": "arn:aws:dynamodb:*:519956516642:table/tflock-*-table"
+    }
+  ]
+}
+
+```
+
+
+## Policy: terraform-app-infrastructure-permissions
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "VPCModulePermissions",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateVpc", "ec2:DeleteVpc", "ec2:DescribeVpcs", "ec2:ModifyVpcAttribute",
+        "ec2:CreateSubnet", "ec2:DeleteSubnet", "ec2:DescribeSubnets", "ec2:ModifySubnetAttribute",
+        "ec2:CreateInternetGateway", "ec2:DeleteInternetGateway", "ec2:DescribeInternetGateways", "ec2:AttachInternetGateway", "ec2:DetachInternetGateway",
+        "ec2:CreateRouteTable", "ec2:DeleteRouteTable", "ec2:DescribeRouteTables", "ec2:AssociateRouteTable", "ec2:DisassociateRouteTable", "ec2:CreateRoute", "ec2:DeleteRoute",
+        "ec2:CreateSecurityGroup", "ec2:DeleteSecurityGroup", "ec2:DescribeSecurityGroups",
+        "ec2:AuthorizeSecurityGroupIngress", "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupIngress", "ec2:RevokeSecurityGroupEgress"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SecretsManagerPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:CreateSecret",
+        "secretsmanager:DeleteSecret",
+        "secretsmanager:PutSecretValue"
+      ],
+      "Resource": "arn:aws:secretsmanager:*:519956516642:secret:*"
+    },
+    {
+      "Sid": "DynamoDBTablesPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:CreateTable",
+        "dynamodb:DeleteTable",
+        "dynamodb:DescribeTable",
+        "dynamodb:UpdateTable"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:*:519956516642:table/couples_table",
+        "arn:aws:dynamodb:*:519956516642:table/rsvp_table"
+      ]
+    },
+    {
+      "Sid": "CognitoPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:CreateUserPool", "cognito-idp:DeleteUserPool", "cognito-idp:DescribeUserPool", "cognito-idp:UpdateUserPool",
+        "cognito-idp:CreateUserPoolClient", "cognito-idp:DeleteUserPoolClient", "cognito-idp:DescribeUserPoolClient", "cognito-idp:UpdateUserPoolClient",
+        "cognito-idp:CreateUserPoolDomain", "cognito-idp:DeleteUserPoolDomain", "cognito-idp:DescribeUserPoolDomain"
+      ],
+      "Resource": "arn:aws:cognito-idp:*:519956516642:userpool/*"
+    },
+    {
+      "Sid": "IAMManagementForEC2",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:UpdateRole",
+        "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy",
+        "iam:CreateInstanceProfile", "iam:DeleteInstanceProfile", "iam:GetInstanceProfile",
+        "iam:AddRoleToInstanceProfile", "iam:RemoveRoleFromInstanceProfile"
+      ],
+      "Resource": [
+        "arn:aws:iam::519956516642:role/ec2_rsvp_role",
+        "arn:aws:iam::519956516642:instance-profile/ec2_rsvp_profile"
+      ]
+    },
+    {
+      "Sid": "EC2AndElasticIPPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances", "ec2:TerminateInstances", "ec2:DescribeInstances",
+        "ec2:AllocateAddress", "ec2:ReleaseAddress", "ec2:DescribeAddresses",
+        "ec2:AssociateAddress", "ec2:DisassociateAddress"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+
+```
+
+
+### 2.2. Create GitHub Actions IAM Role (Manual Console Setup)
 
 1. Go to **IAM** → **Roles** → **Create role**.
 2. Select **Custom trust policy** and paste this JSON (replace `YOUR_AWS_ACCOUNT_ID` and `YOUR_GITHUB_USER/YOUR_REPO_NAME`):
@@ -41,8 +184,9 @@
 
 
 3. Click **Next**.
-4. Search for and select **AdministratorAccess**. Click **Next**.
-5. Name it `github-actions-terraform-role` and click **Create role**.
+4. Search for and check the boxes for: **terraform-backend-permissions** and **terraform-app-infrastructure-permissions**.
+5. Click **Next**.
+6. Name it `github-actions-terraform-role` and click **Create role**.
 
 ### 3. Populate Application Secrets
 
@@ -59,22 +203,3 @@
 }
 
 ```
-
-
-
----
-
-## Part 2: Repository Configuration
-
-### 1. Update AWS Account ID in GitHub Workflow
-
-* Find your 12-digit **Account ID** (top-right corner of AWS Console).
-* Update the `OIDC_ROLE_ARN` in `.github/workflows/terraform-infra.yml`:
-`arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/github-actions-terraform-role`
-
-### 2. Update Repository Identity in `main.tf`
-
-* Open `main.tf` and update the `sub` claim to match your specific GitHub user/repo:
-`"token.actions.githubusercontent.com:sub" : "repo:YOUR_GITHUB_USER/YOUR_REPO_NAME:*"`
-
----
