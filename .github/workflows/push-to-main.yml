@@ -1,0 +1,53 @@
+name: Test, Build and Push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-test-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          exit-code: '1'
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Calculate next image tag
+        id: versioning
+        run: |
+          CURRENT_VERSION=$(grep -oP 'docker_image\s*=\s*"barshenig/web-app-rsvp:\K[0-9]+' terraform/terraform.tfvars)
+          NEXT_VERSION=$((CURRENT_VERSION + 1))
+          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "Next version is $NEXT_VERSION"
+
+      - name: Build and Push to Docker Hub
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: barshenig/web-app-rsvp:${{ steps.versioning.outputs.next_version }}
+
+      - name: Update Terraform variables file
+        run: |
+          sed -i 's|docker_image\s*=\s*"barshenig/web-app-rsvp:[0-9]*"|docker_image        = "barshenig/web-app-rsvp:${{ steps.versioning.outputs.next_version }}"|' terraform/terraform.tfvars
+
+      - name: Commit and Push changes to GitHub
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@://github.com"
+          git add terraform/terraform.tfvars
+          git commit -m "chore: bump docker image version to ${{ steps.versioning.outputs.next_version }} [skip ci]"
+          git push
