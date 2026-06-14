@@ -26,7 +26,7 @@ jobs:
 
     env:
       # Generating a unique and random bucket name based on the Repo ID (Deterministic)
-      BUCKET_NAME: "tfstate-${{ github.repository_id }}-bucket"
+      BUCKET_NAME: "tfstate-${{ github.repository_id }}-bucket-rsvp"
       TABLE_NAME: "tflock-${{ github.repository_id }}-table"
       AWS_REGION: "us-east-1"
       
