@@ -11,7 +11,6 @@ from authlib.integrations.flask_client import OAuth
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Attr
 
-### adding a line for testing the workflow
 
 app = Flask(__name__)
 
