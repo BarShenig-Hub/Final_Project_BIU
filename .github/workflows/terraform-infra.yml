@@ -34,7 +34,7 @@ jobs:
       # CHANGE REQUIRED HERE: Replace 'YOUR_AWS_ACCOUNT_ID' with your real 12-digit AWS account number.
       # HOW TO FIND IT: Log into the AWS Console, click your username/avatar in the top-right corner, and copy the 12-digit "Account ID".
       # ---------------------------------------------------------------------------------------------------------------------------------
-      OIDC_ROLE_ARN: "arn:aws:iam::519956516642:role/github-actions-terraform-role"
+      OIDC_ROLE_ARN: "arn:aws:iam::319629020344:role/github-actions-terraform-role"
 
     steps:
     - name: Checkout Code
