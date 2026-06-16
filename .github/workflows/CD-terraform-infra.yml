@@ -114,10 +114,8 @@ jobs:
       if: ${{ github.event.inputs.tf_action == 'destroy' }}
       run: |
         terraform destroy -auto-approve
-<<<<<<< HEAD:.github/workflows/CD-terraform-infra.yml
-
+        
     - name: Log Action for Post-Deployment Trigger
       run: |
         echo "Action completed: ${{ github.event.inputs.tf_action }}"
-=======
->>>>>>> main:.github/workflows/terraform-infra.yml
+
