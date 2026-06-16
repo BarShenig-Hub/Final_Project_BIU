@@ -34,7 +34,7 @@ jobs:
         id: versioning
         run: |
           # Use sed/tr to safely isolate just the digits of the version number
-          CURRENT_VERSION=$(grep 'docker_image' terraform/terraform.tfvars | sed -0 's/[^0-9]//g')
+          CURRENT_VERSION=$(grep 'docker_image' terraform/terraform.tfvars | sed 's/[^0-9]//g')
           # Default to 0 if the version file was somehow unreadable/empty
           if [ -z "$CURRENT_VERSION" ]; then CURRENT_VERSION=0; fi
           NEXT_VERSION=$((CURRENT_VERSION + 1))
