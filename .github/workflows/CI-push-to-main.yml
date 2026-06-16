@@ -1,9 +1,14 @@
-name: Test, Build and Push
+name: CI - Push to Main
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'app.py'
+
+permissions:
+  contents: write
 
 jobs:
   build-test-push:
@@ -28,7 +33,10 @@ jobs:
       - name: Calculate next image tag
         id: versioning
         run: |
-          CURRENT_VERSION=$(grep -oP 'docker_image\s*=\s*"barshenig/web-app-rsvp:\K[0-9]+' terraform/terraform.tfvars)
+          # Use sed/tr to safely isolate just the digits of the version number
+          CURRENT_VERSION=$(grep 'docker_image' terraform/terraform.tfvars | sed -0 's/[^0-9]//g')
+          # Default to 0 if the version file was somehow unreadable/empty
+          if [ -z "$CURRENT_VERSION" ]; then CURRENT_VERSION=0; fi
           NEXT_VERSION=$((CURRENT_VERSION + 1))
           echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
           echo "Next version is $NEXT_VERSION"
@@ -42,12 +50,18 @@ jobs:
 
       - name: Update Terraform variables file
         run: |
-          sed -i 's|docker_image\s*=\s*"barshenig/web-app-rsvp:[0-9]*"|docker_image        = "barshenig/web-app-rsvp:${{ steps.versioning.outputs.next_version }}"|' terraform/terraform.tfvars
+          # Added -E flag so extended regex works perfectly in Ubuntu
+          sed -i -E 's|docker_image[[:space:]]*=[[:space:]]*"barshenig/web-app-rsvp:[0-9]+"|docker_image        = "barshenig/web-app-rsvp:${{ steps.versioning.outputs.next_version }}"|' terraform/terraform.tfvars
 
       - name: Commit and Push changes to GitHub
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@://github.com"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add terraform/terraform.tfvars
-          git commit -m "chore: bump docker image version to ${{ steps.versioning.outputs.next_version }} [skip ci]"
-          git push
+          # Check if there are actual changes before committing to avoid empty commit crashes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: bump docker image version to ${{ steps.versioning.outputs.next_version }} [skip ci]"
+            git push
+          fi

@@ -1,0 +1,65 @@
+name: Post-Deployment Verification
+
+on:
+  workflow_run:
+    workflows: ["Terraform Infrastructure"]
+    types:
+      - completed
+
+jobs:
+  verify:
+    # Only run if the Terraform workflow succeeded AND the user chose "apply"
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Verify it was an 'apply' action
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Checking the exact inputs of the triggered workflow run..."
+          
+          TF_ACTION=$(gh api repos/$REPO/actions/runs/$RUN_ID | jq -r '.triggering_actor.login // .inputs.tf_action')
+          
+          ACTUAL_ACTION=$(gh api repos/$REPO/actions/runs/$RUN_ID | jq -r '.inputs.tf_action')
+          
+          echo "The action selected was: $ACTUAL_ACTION"
+          
+          if [ "$ACTUAL_ACTION" != "apply" ]; then
+            echo "🛑 This workflow finished successfully but it was NOT an 'apply' action (it was '$ACTUAL_ACTION'). Skipping verification."
+            exit 0
+          fi
+          
+          echo "🎯 Valid action confirmed: 'apply'. Proceeding to website status check..."
+      - name: Check website status
+        run: |
+          TARGET_URL="https://sharper-unending-frill.ngrok-free.dev/admin"
+          
+          echo "Verifying deployment at $TARGET_URL..."
+          echo "Waiting 240 seconds for network routes to stabilize..."
+          sleep 240
+          
+          # Loop up to 6 times (checking over the course of 1 minute)
+          for i in {1..6}; do
+            echo "Attempt $i: Pinging live domain..."
+            
+            # Ngrok sometimes returns a 302 redirect or a 200 depending on your configuration
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$TARGET_URL")
+            echo "Received status code: $STATUS_CODE"
+            
+            # 200 = Success, 302 = Found/Redirect (like your root route to /admin)
+            if [ "$STATUS_CODE" -eq 200 ] || [ "$STATUS_CODE" -eq 302 ]; then
+              echo "✅ Success! Infrastructure is serving traffic at $TARGET_URL."
+              exit 0
+            elif [ "$STATUS_CODE" -eq 403 ] || [ "$STATUS_CODE" -eq 404 ]; then
+              echo "⚠️ Received $STATUS_CODE. Server responded but page might be loading routes..."
+            fi
+            
+            echo "Sleeping 10 seconds before next attempt..."
+            sleep 10
+          done
+          
+          echo "❌ Error: Could not verify a healthy service status code after 1 minute."
+          exit 1
