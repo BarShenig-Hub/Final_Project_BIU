@@ -9,16 +9,30 @@ on:
 jobs:
   verify:
     # Only run if the Terraform workflow succeeded AND the user chose "apply"
-    if: >
-      github.event.workflow_run.conclusion == 'success' && 
-      (github.event.workflow_run.triggering_actor != '' && 
-      contains(github.event.workflow_run.head_commit.message, 'apply')) 
-      || true # Note: Since workflow_run inputs can be tricky to read directly from payloads, 
-              # we ensure it runs, but we will double-check the logic inside the script below.
-    
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     
     steps:
+      - name: Verify it was an 'apply' action
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Checking the exact inputs of the triggered workflow run..."
+          
+          TF_ACTION=$(gh api repos/$REPO/actions/runs/$RUN_ID | jq -r '.triggering_actor.login // .inputs.tf_action')
+          
+          ACTUAL_ACTION=$(gh api repos/$REPO/actions/runs/$RUN_ID | jq -r '.inputs.tf_action')
+          
+          echo "The action selected was: $ACTUAL_ACTION"
+          
+          if [ "$ACTUAL_ACTION" != "apply" ]; then
+            echo "🛑 This workflow finished successfully but it was NOT an 'apply' action (it was '$ACTUAL_ACTION'). Skipping verification."
+            exit 0
+          fi
+          
+          echo "🎯 Valid action confirmed: 'apply'. Proceeding to website status check..."
       - name: Check website status
         run: |
           TARGET_URL="https://sharper-unending-frill.ngrok-free.dev"
