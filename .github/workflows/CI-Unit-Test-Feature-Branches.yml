@@ -7,7 +7,6 @@ on:
       - '!main'
     paths:
       - 'app.py'
-      - 'test_app.py'
 
 jobs:
   run-tests:
@@ -32,4 +31,3 @@ jobs:
       - name: Execute Unittest
         run: |
           python -m unittest test_app.py
-          
