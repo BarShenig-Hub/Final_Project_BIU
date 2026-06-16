@@ -11,6 +11,7 @@ from authlib.integrations.flask_client import OAuth
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Attr
 
+# A change in the code!!!
 
 app = Flask(__name__)
 
