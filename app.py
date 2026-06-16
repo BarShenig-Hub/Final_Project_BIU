@@ -10,6 +10,7 @@ from authlib.integrations.flask_client import OAuth
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Attr
 
+
 app = Flask(__name__)
 
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24))
