@@ -5,13 +5,11 @@ import re
 import uuid
 import boto3
 from functools import wraps
-from utils import GEN_EMAIL
 
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, session, send_file
 from authlib.integrations.flask_client import OAuth
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Attr
-
 
 app = Flask(__name__)
 
