@@ -35,7 +35,7 @@ jobs:
           echo "🎯 Valid action confirmed: 'apply'. Proceeding to website status check..."
       - name: Check website status
         run: |
-          TARGET_URL="https://sharper-unending-frill.ngrok-free.dev"
+          TARGET_URL="https://sharper-unending-frill.ngrok-free.dev/admin"
           
           echo "Verifying deployment at $TARGET_URL..."
           echo "Waiting 240 seconds for network routes to stabilize..."
